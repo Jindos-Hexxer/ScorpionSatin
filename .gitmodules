@@ -1,15 +1,3 @@
-[submodule "libs/jolt"]
-	path = libs/jolt
-	url = https://github.com/a16z/jolt
-[submodule "libs/bgfx"]
-	path = libs/bgfx
-	url = https://github.com/bkaradzic/bgfx
-[submodule "libs/bx"]
-	path = libs/bx
-	url = https://github.com/bkaradzic/bx
-[submodule "libs/bimg"]
-	path = libs/bimg
-	url = https://github.com/bkaradzic/bimg
 [submodule "libs/rtxgi"]
 	path = libs/rtxgi
 	url = https://github.com/NVIDIA-RTX/RTXGI
@@ -19,3 +7,9 @@
 [submodule "libs/flecs"]
 	path = libs/flecs
 	url = https://github.com/SanderMertens/flecs
+[submodule "libs/jolt-physics"]
+	path = libs/jolt-physics
+	url = https://github.com/jrouwe/JoltPhysics
+[submodule "libs/bgfx-cmake"]
+	path = libs/bgfx-cmake
+	url = https://github.com/bkaradzic/bgfx.cmake
