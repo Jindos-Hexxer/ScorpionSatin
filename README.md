@@ -1,6 +1,10 @@
+<div align="center">
+  <img src="./img/logo.png" alt="ScorpionSatin Logo" width="100">
+
 # ScorpionSatin Engine
 
 A high-performance game engine built with modern C++23, featuring physics simulation, ECS architecture, real-time graphics rendering, and networked multiplayer support.
+</div>
 
 ## Features
 
