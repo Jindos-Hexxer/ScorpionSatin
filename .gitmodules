@@ -10,3 +10,9 @@
 [submodule "libs/bimg"]
 	path = libs/bimg
 	url = https://github.com/bkaradzic/bimg
+[submodule "libs/rtxgi"]
+	path = libs/rtxgi
+	url = https://github.com/NVIDIA-RTX/RTXGI
+[submodule "libs/msquic"]
+	path = libs/msquic
+	url = https://github.com/microsoft/msquic
