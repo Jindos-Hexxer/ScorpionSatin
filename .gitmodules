@@ -1,3 +1,12 @@
 [submodule "libs/jolt"]
 	path = libs/jolt
 	url = https://github.com/a16z/jolt
+[submodule "libs/bgfx"]
+	path = libs/bgfx
+	url = https://github.com/bkaradzic/bgfx
+[submodule "libs/bx"]
+	path = libs/bx
+	url = https://github.com/bkaradzic/bx
+[submodule "libs/bimg"]
+	path = libs/bimg
+	url = https://github.com/bkaradzic/bimg
