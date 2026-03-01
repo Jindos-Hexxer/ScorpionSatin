@@ -1,0 +1,18 @@
+# Handle line endings automatically
+* text=auto
+
+# Force C++ and Header files to LF in the repo, CRLF on Windows
+*.cpp text
+*.hpp text
+*.h   text
+*.c   text
+*.lua text
+*.sc  text
+*.sh  eol=lf
+*.bat eol=crlf
+
+# Keep binary files as-is
+*.png binary
+*.jpg binary
+*.db  binary
+*.bin binary
