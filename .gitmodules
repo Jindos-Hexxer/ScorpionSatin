@@ -16,3 +16,6 @@
 [submodule "libs/msquic"]
 	path = libs/msquic
 	url = https://github.com/microsoft/msquic
+[submodule "libs/flecs"]
+	path = libs/flecs
+	url = https://github.com/SanderMertens/flecs
