@@ -10,6 +10,18 @@
 [submodule "libs/jolt-physics"]
 	path = libs/jolt-physics
 	url = https://github.com/jrouwe/JoltPhysics
-[submodule "libs/bgfx-cmake"]
-	path = libs/bgfx-cmake
-	url = https://github.com/bkaradzic/bgfx.cmake
+[submodule "libs/VulkanMemoryAllocator"]
+	path = libs/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "libs/vk-bootstrap"]
+	path = libs/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap
+[submodule "libs/glfw"]
+	path = libs/glfw
+	url = https://github.com/glfw/glfw
+[submodule "libs/recastnavigation"]
+	path = libs/recastnavigation
+	url = https://github.com/recastnavigation/recastnavigation
+[submodule "libs/imgui"]
+	path = libs/imgui
+	url = https://github.com/ocornut/imgui

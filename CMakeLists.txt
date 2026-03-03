@@ -7,67 +7,212 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Path Definitions
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
-set(MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules")
+set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(SHADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 
-# MsQuic Configuration
+# Build Options
+option(ENGINE_HEADLESS "Build headless server (no Vulkan/ImGui/GLFW)" OFF)
+option(ENGINE_EDITOR "Include ImGui editor panels" ON)
+option(ENGINE_RTXGI "Enable RTXGI global illumination" ON)
+
+# Always-built dependencies (Client and Headless)
 set(QUIC_BUILD_TEST OFF CACHE INTERNAL "")
 set(QUIC_BUILD_TOOLS OFF CACHE INTERNAL "")
 set(QUIC_ENABLE_LOGGING ON CACHE INTERNAL "")
 add_subdirectory(${LIBS_DIR}/msquic EXCLUDE_FROM_ALL)
 
-# Flecs
 set(FLECS_STATIC ON CACHE INTERNAL "")
 add_subdirectory(${LIBS_DIR}/flecs EXCLUDE_FROM_ALL)
 
-# Jolt Physics
-set(TARGET_UNIT_TESTS OFF CACHE BOOL "")
-set(TARGET_HELLO_WORLD OFF CACHE BOOL "")
-set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "")
-set(TARGET_SAMPLES OFF CACHE BOOL "")
-set(TARGET_VIEWER OFF CACHE BOOL "")
-set(GENERATE_DEBUG_SYMBOLS OFF CACHE BOOL "")
-add_subdirectory(${LIBS_DIR}/jolt-physics/Build ${CMAKE_BINARY_DIR}/jolt_build EXCLUDE_FROM_ALL)
+# Recast/Detour - used by both Client and Headless
+set(RECASTNAVIGATION_DEMO OFF CACHE BOOL "")
+set(RECASTNAVIGATION_TESTS OFF CACHE BOOL "")
+set(RECASTNAVIGATION_EXAMPLES OFF CACHE BOOL "")
+add_subdirectory(${LIBS_DIR}/recastnavigation EXCLUDE_FROM_ALL)
 
-# bgfx
-add_subdirectory(${LIBS_DIR}/bgfx-cmake EXCLUDE_FROM_ALL)
+# Client-only dependencies (Vulkan, windowing, editor)
+set(VULKAN_FOUND OFF)
+if(NOT ENGINE_HEADLESS)
+    find_package(Vulkan)
+    if(Vulkan_FOUND)
+        set(VULKAN_FOUND ON)
+    else()
+        message(WARNING "Vulkan not found - client build disabled. Install Vulkan SDK or set Vulkan_ROOT.")
+    endif()
+endif()
 
-# Core Module - ScorpionSatin Engine Library
-add_library(ScorpionSatin SHARED)
+if(VULKAN_FOUND)
+    # VMA - Vulkan memory management
+    add_subdirectory(${LIBS_DIR}/VulkanMemoryAllocator EXCLUDE_FROM_ALL)
 
-# Modularize the SDK using Target Sources
-target_sources(ScorpionSatin
+    # vk-bootstrap - Vulkan init
+    set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "")
+    add_subdirectory(${LIBS_DIR}/vk-bootstrap EXCLUDE_FROM_ALL)
+
+    # GLFW - Windowing
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "")
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "")
+    set(GLFW_INSTALL OFF CACHE BOOL "")
+    add_subdirectory(${LIBS_DIR}/glfw EXCLUDE_FROM_ALL)
+
+    # ImGui - Editor UI
+    add_library(imgui STATIC
+        ${LIBS_DIR}/imgui/imgui.cpp
+        ${LIBS_DIR}/imgui/imgui_draw.cpp
+        ${LIBS_DIR}/imgui/imgui_tables.cpp
+        ${LIBS_DIR}/imgui/imgui_widgets.cpp
+        ${LIBS_DIR}/imgui/backends/imgui_impl_glfw.cpp
+        ${LIBS_DIR}/imgui/backends/imgui_impl_vulkan.cpp
+    )
+    target_include_directories(imgui PUBLIC
+        ${LIBS_DIR}/imgui
+        ${LIBS_DIR}/imgui/backends
+    )
+    target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)
+endif()
+
+# =============================================================================
+# Engine (Shared Library) - Engine.dll / Engine.so
+# =============================================================================
+add_library(Engine SHARED)
+set_target_properties(Engine PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
+target_sources(Engine
     PRIVATE
-    ${MODULES_DIR}/net/MsQuicWrapper.cpp
-    ${MODULES_DIR}/rhi/RtxgiBridge.cpp
-    ${MODULES_DIR}/core/CoreSystems.cpp
+    ${SRC_DIR}/ecs/CoreSystems.cpp
+    ${SRC_DIR}/network/MsQuicWrapper.cpp
+    ${SRC_DIR}/collision/SpatialGrid.cpp
+    ${SRC_DIR}/navmesh/NavMeshRuntime.cpp
 )
 
-# Linkage (Public interfaces for the Game Project)
-target_link_libraries(ScorpionSatin
+target_include_directories(Engine
     PUBLIC
-    msquic
-    flecs
-    Jolt
-    bgfx
-    bx
-    bimg
-)
-
-target_include_directories(ScorpionSatin
-    PUBLIC
-    $<BUILD_INTERFACE:${MODULES_DIR}>
+    $<BUILD_INTERFACE:${INCLUDE_DIR}>
+    $<BUILD_INTERFACE:${SRC_DIR}>
     $<BUILD_INTERFACE:${LIBS_DIR}/msquic/src/inc>
     $<BUILD_INTERFACE:${LIBS_DIR}/flecs/include>
-    $<BUILD_INTERFACE:${LIBS_DIR}/jolt-physics/Source>
-    $<BUILD_INTERFACE:${LIBS_DIR}/rtxgi/rtxgi/include>
+    $<BUILD_INTERFACE:${LIBS_DIR}/recastnavigation/Detour/Include>
+    $<BUILD_INTERFACE:${LIBS_DIR}/recastnavigation/Recast/Include>
     $<INSTALL_INTERFACE:include>
 )
 
-# Platform Definitions
-if(WIN32)
-    target_compile_definitions(ScorpionSatin PUBLIC SPN_PLATFORM_WINDOWS)
-else()
-    target_compile_definitions(ScorpionSatin PUBLIC SPN_PLATFORM_LINUX)
+target_link_libraries(Engine
+    PUBLIC
+    msquic
+    flecs
+    Recast
+    Detour
+)
+
+if(VULKAN_FOUND)
+    target_sources(Engine PRIVATE
+        ${SRC_DIR}/render/RenderDevice.cpp
+        ${SRC_DIR}/render/RtxgiBridge.cpp
+    )
+    target_include_directories(Engine PUBLIC
+        $<BUILD_INTERFACE:${LIBS_DIR}/VulkanMemoryAllocator/include>
+        $<BUILD_INTERFACE:${LIBS_DIR}/vk-bootstrap/src>
+    )
+    target_link_libraries(Engine PUBLIC
+        Vulkan::Vulkan
+        GPUOpen::VulkanMemoryAllocator
+        vk-bootstrap::vk-bootstrap
+        glfw
+    )
+    if(ENGINE_RTXGI)
+        target_compile_definitions(Engine PUBLIC ENGINE_RTXGI=1)
+        target_include_directories(Engine PUBLIC $<BUILD_INTERFACE:${LIBS_DIR}/rtxgi/Samples/Pathtracer>)
+    endif()
 endif()
 
-message(STATUS "ScorpionSatin Engine initialized.")
+if(WIN32)
+    target_compile_definitions(Engine PUBLIC SPN_PLATFORM_WINDOWS)
+else()
+    target_compile_definitions(Engine PUBLIC SPN_PLATFORM_LINUX)
+endif()
+
+# =============================================================================
+# Editor (Executable) - Editor.exe - Client only
+# =============================================================================
+if(VULKAN_FOUND AND ENGINE_EDITOR)
+    add_executable(Editor ${SRC_DIR}/core/Main.cpp)
+    target_include_directories(Editor PRIVATE
+        ${INCLUDE_DIR}
+        ${LIBS_DIR}/glfw/include
+        ${LIBS_DIR}/imgui
+        ${LIBS_DIR}/imgui/backends
+    )
+    target_link_libraries(Editor PRIVATE Engine imgui glfw Vulkan::Vulkan)
+endif()
+
+# =============================================================================
+# Game (Plugin DLL) - Game.dll - Client only, stub for hot-reload
+# =============================================================================
+if(VULKAN_FOUND)
+    add_library(Game SHARED ${SRC_DIR}/ecs/GamePlugin.cpp)
+    target_include_directories(Game PRIVATE ${INCLUDE_DIR} ${LIBS_DIR}/flecs/include)
+    target_link_libraries(Game PRIVATE Engine flecs)
+    set_target_properties(Game PROPERTIES PREFIX "" OUTPUT_NAME "Game")
+endif()
+
+# =============================================================================
+# DedicatedServer (Executable) - Headless only
+# =============================================================================
+if(ENGINE_HEADLESS)
+    add_executable(DedicatedServer ${SRC_DIR}/core/ServerMain.cpp)
+    target_include_directories(DedicatedServer PRIVATE ${INCLUDE_DIR})
+    target_link_libraries(DedicatedServer PRIVATE Engine)
+    # Ensure Engine is built first and linker finds Engine.lib
+    add_dependencies(DedicatedServer Engine)
+    set_target_properties(DedicatedServer PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+    )
+endif()
+
+# =============================================================================
+# Shader Compilation
+# =============================================================================
+if(VULKAN_FOUND)
+    set(SHADER_OUTPUT_DIR "${CMAKE_BINARY_DIR}/shaders")
+    file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
+    if(NOT Vulkan_GLSLC_EXECUTABLE)
+        find_program(Vulkan_GLSLC_EXECUTABLE NAMES glslc glslc.exe HINTS "${Vulkan_INCLUDE_DIR}/../bin" "${Vulkan_INCLUDE_DIR}/../Bin")
+    endif()
+    file(GLOB GLSL_SHADERS "${SHADERS_DIR}/*.vert" "${SHADERS_DIR}/*.frag" "${SHADERS_DIR}/*.comp")
+    foreach(SHADER ${GLSL_SHADERS})
+        get_filename_component(SHADER_NAME ${SHADER} NAME_WE)
+        get_filename_component(SHADER_EXT ${SHADER} EXT)
+        if(SHADER_EXT STREQUAL ".vert")
+            set(STAGE "vert")
+        elseif(SHADER_EXT STREQUAL ".frag")
+            set(STAGE "frag")
+        elseif(SHADER_EXT STREQUAL ".comp")
+            set(STAGE "comp")
+        else()
+            continue()
+        endif()
+        if(Vulkan_GLSLC_EXECUTABLE)
+            add_custom_command(
+                OUTPUT ${SHADER_OUTPUT_DIR}/${SHADER_NAME}_${STAGE}.spv
+                COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${SHADER} -o ${SHADER_OUTPUT_DIR}/${SHADER_NAME}_${STAGE}.spv
+                DEPENDS ${SHADER}
+                COMMENT "Compiling ${SHADER_NAME}${SHADER_EXT} to SPIR-V"
+            )
+            list(APPEND SPIRV_SHADERS ${SHADER_OUTPUT_DIR}/${SHADER_NAME}_${STAGE}.spv)
+        endif()
+    endforeach()
+    if(SPIRV_SHADERS)
+        add_custom_target(CompileShaders ALL DEPENDS ${SPIRV_SHADERS})
+    endif()
+endif()
+
+message(STATUS "ScorpionSatin: ENGINE_HEADLESS=${ENGINE_HEADLESS}, ENGINE_EDITOR=${ENGINE_EDITOR}, ENGINE_RTXGI=${ENGINE_RTXGI}")

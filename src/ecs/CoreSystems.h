@@ -1,8 +1,5 @@
-#ifndef CORE_SYSTEMS_H
-#define CORE_SYSTEMS_H
+#pragma once
 
 #include <flecs.h>
 
 void InitializeCoreSystems(flecs::world& ecs);
-
-#endif

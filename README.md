@@ -3,286 +3,178 @@
 
 # ScorpionSatin Engine
 
-A high-performance game engine built with modern C++23, featuring physics simulation, ECS architecture, real-time graphics rendering, and networked multiplayer support.
+A modular Vulkan game engine for MMO-style games, featuring ECS architecture, real-time ray-traced global illumination, and networked multiplayer support.
 </div>
 
 ## Features
 
-- **Physics Engine**: Jolt Physics for realistic collision and dynamics
-- **ECS Framework**: Flecs for flexible entity-component-system architecture
-- **Graphics Rendering**: bgfx for cross-platform graphics abstraction
-- **Networking**: MsQuic for low-latency multiplayer communication
-- **Ray Tracing**: RTXGI for real-time global illumination
-- **Cross-Platform**: Windows (client), Linux (server)
+- **Vulkan 1.4** - Modern low-level rendering with vk-bootstrap and VMA
+- **ECS Framework** - Flecs for entity-component-system architecture
+- **Networking** - MsQuic (QUIC) for low-latency multiplayer
+- **Global Illumination** - RTXGI (NRC/SHaRC) for ray-traced GI
+- **Navigation** - Recast/Detour for NavMesh pathfinding and collision
+- **Editor** - ImGui-based viewport, entity inspector, NavMesh visualization
+- **Cross-Platform** - Windows (client), Linux (headless server)
 
 ## Prerequisites
 
-### Windows (Build Host)
-- **Visual Studio 2022** or later with C++ build tools
-- **CMake 3.25+** (add to PATH or install from [cmake.org](https://cmake.org))
-- **Git** with submodule support
-
-### Linux (Build Host)
-- **GCC 11+** or **Clang 14+**
+### All Platforms
 - **CMake 3.25+**
 - **Git** with submodule support
+- **C++23** toolchain
 
-## Initial Setup
+### Windows (Client Build)
+- **Visual Studio 2022** with C++ build tools
+- **Vulkan SDK** ([LunarG](https://vulkan.lunarg.com/sdk/home)) - required for Editor/Game builds
 
-### 1. Clone the Repository
+### Linux (Headless Server)
+- **GCC 11+** or **Clang 14+**
+
+## Quick Start
+
+### 1. Clone and Initialize Submodules
 ```bash
 git clone <your-repo-url> ScorpionSatin
 cd ScorpionSatin
-```
-
-### 2. Initialize Git Submodules
-```bash
 git submodule update --init --recursive
 ```
 
-This fetches all external dependencies:
-- `libs/jolt-physics` - Physics simulation
-- `libs/flecs` - ECS framework
-- `libs/msquic` - Network communication
-- `libs/bgfx-cmake` - Graphics rendering
-- `libs/rtxgi` - Ray tracing global illumination
+### 2. Build
 
-## Building on Windows
-
-### Quick Build
-Simply run the build script in PowerShell:
-```powershell
-.\build.bat
-```
-
-This will:
-1. Create a `build/` directory
-2. Configure CMake with Visual Studio 17 2022 (64-bit)
-3. Compile all dependencies and the engine in Release mode
-4. Output: `build/Release/ScorpionSatin.dll`
-
-### Manual Build
-```powershell
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022" -A x64
-cmake --build . --config Release
-cd ..
-```
-
-### Debug Build
-```powershell
-mkdir build_debug
-cd build_debug
-cmake .. -G "Visual Studio 17 2022" -A x64
-cmake --build . --config Debug
-cd ..
-```
-
-## Building on Linux
-
-### Setup
+**Headless (Dedicated Server) - no Vulkan required:**
 ```bash
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build .
-cd ..
+cmake .. -DENGINE_HEADLESS=ON
+cmake --build . --config Debug
 ```
 
-**Output:** `build/libScorpionSatin.so`
+**Client (Editor + Game) - requires Vulkan SDK:**
+```bash
+mkdir build
+cd build
+cmake .. -DENGINE_HEADLESS=OFF -DENGINE_EDITOR=ON
+cmake --build . --config Debug
+```
+
+### 3. Run
+
+**Dedicated Server (headless):**
+```bash
+# Windows
+.\build\Debug\DedicatedServer.exe --headless
+
+# Linux
+./build/DedicatedServer --headless
+```
+
+**Editor (client, when Vulkan SDK is installed):**
+```bash
+# Windows
+.\build\Debug\Editor.exe
+
+# Linux
+./build/Editor
+```
+
+## Build Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `ENGINE_HEADLESS` | OFF | Build headless server only (no Vulkan/ImGui/GLFW) |
+| `ENGINE_EDITOR` | ON | Include ImGui editor panels (client only) |
+| `ENGINE_RTXGI` | ON | Enable RTXGI global illumination (client only) |
+
+## Build Outputs
+
+| Target | Output | When |
+|--------|--------|------|
+| Engine | `Engine.dll` (Win) / `Engine.so` (Linux) | Always |
+| DedicatedServer | `DedicatedServer.exe` | `ENGINE_HEADLESS=ON` |
+| Editor | `Editor.exe` | Client + `ENGINE_EDITOR=ON` |
+| Game | `Game.dll` | Client build |
+
+Outputs are in `build/Debug/` or `build/Release/` depending on config.
 
 ## Project Structure
 
 ```
 ScorpionSatin/
-├── /libs                    # External dependencies (Git submodules)
-│   ├── jolt-physics/        # Physics engine
-│   ├── flecs/               # ECS framework
-│   ├── msquic/              # Network library
-│   ├── bgfx-cmake/          # Graphics rendering
-│   └── rtxgi/               # Ray tracing
-├── /modules                 # Engine modules
-│   ├── net/                 # Networking (MsQuic wrapper)
-│   ├── rhi/                 # Rendering (RTXGI integration)
-│   └── core/                # Core ECS systems
-├── CMakeLists.txt           # Main build configuration
-├── build.bat                # Windows build script
-└── build/                   # Build output directory
+├── src/
+│   ├── core/       # Entry point, windowing (GLFW), main loop
+│   ├── render/     # Vulkan wrappers, RTXGI integration
+│   ├── ecs/        # Flecs components and systems
+│   ├── collision/  # Spatial Grid, sphere/AABB checks
+│   ├── editor/     # ImGui panels, viewport, entity inspector
+│   ├── network/    # MsQuic client/server
+│   └── navmesh/    # Recast/Detour integration
+├── shaders/        # GLSL source (compiled to SPIR-V)
+├── include/        # Public API (EngineCore.h, Renderer.h)
+├── libs/           # Git submodules
+│   ├── flecs/      # ECS framework
+│   ├── msquic/     # Network library
+│   ├── rtxgi/      # RTXGI (NRC/SHaRC)
+│   ├── recastnavigation/  # NavMesh
+│   ├── VulkanMemoryAllocator/
+│   ├── vk-bootstrap/
+│   ├── imgui/
+│   └── glfw/
+└── docs/           # Architecture documentation
 ```
 
-## Using ScorpionSatin in Your Game
+## Cursor IDE
 
-Create a game repository with this structure:
+The project includes `.vscode/` configuration:
 
-```
-Project_YourGame/
-├── /engine                  # Git submodule → ScorpionSatin
-├── /src
-│   ├── main.cpp             # Entry point
-│   ├── /combat              # Game-specific ECS systems
-│   └── /ui                  # Game UI
-├── /assets                  # Game assets
-├── /data                    # Exported game data
-└── CMakeLists.txt           # Links to ScorpionSatin engine
-```
+- **CMake Tools** - Configure on open, build directory
+- **Tasks** - `CMake Configure (Client)`, `CMake Configure (Headless)`, `CMake Build`
+- **Launch** - Debug `Editor.exe` or `DedicatedServer.exe`
 
-### Game CMakeLists.txt Example
-```cmake
-cmake_minimum_required(VERSION 3.25)
-project(YourGame LANGUAGES CXX C)
+Use **Run and Debug** (F5) or the build task to compile.
 
-set(CMAKE_CXX_STANDARD 23)
+## Troubleshooting
 
-# Engine submodule
-add_subdirectory(engine)
+### Vulkan not found
+**Symptom:** `Could NOT find Vulkan` during CMake configure.
 
-# Windows Client
-if(WIN32)
-    add_executable(GameClient src/main.cpp)
-    target_link_libraries(GameClient PRIVATE ScorpionSatin)
-    target_compile_definitions(GameClient PRIVATE GAME_CLIENT ENABLE_RENDERING ENABLE_PHYSICS)
-endif()
+**Solution:** Install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) and ensure it's on PATH. Or build headless: `cmake -DENGINE_HEADLESS=ON ..` or add `-DVulkan_ROOT="C:/VulkanSDK/1.4.341.1"`
 
-# Linux Server
-if(UNIX AND NOT APPLE)
-    add_executable(GameServer src/main.cpp)
-    target_link_libraries(GameServer PRIVATE ScorpionSatin)
-    target_compile_definitions(GameServer PRIVATE GAME_SERVER)
-endif()
-```
+### Submodules not initialized
+**Symptom:** `Cannot find msquic`, `flecs`, etc.
 
-### Game Code Example
-```cpp
-#include <flecs.h>
-
-int main() {
-    flecs::world ecs;
-
-#ifdef ENABLE_RENDERING
-    // Client-only initialization
-    InitializeGraphics();
-#endif
-
-#ifdef ENABLE_PHYSICS
-    // Client-only physics
-    InitializePhysics();
-#endif
-
-#ifdef GAME_SERVER
-    // Server-only initialization
-    StartServer();
-#else
-    // Client-only initialization
-    StartClient();
-#endif
-
-    // Main loop
-    while (Running()) {
-        ecs.progress();
-    }
-
-    return 0;
-}
-```
-
-## Build Troubleshooting
-
-### CMake Configuration Fails
-**Error**: `CMake Error at CMakeLists.txt:25`
-
-**Solution**: Clear the cache and rebuild:
-```powershell
-cd build
-rm CMakeCache.txt -Force
-rm CMakeFiles -Recurse -Force
-cmake .. -G "Visual Studio 17 2022" -A x64
-cmake --build . --config Release
-```
-
-### Missing Dependencies
-**Error**: `Cannot find msquic`, `flecs`, etc.
-
-**Solution**: Ensure submodules are initialized:
+**Solution:**
 ```bash
 git submodule update --init --recursive
 ```
 
-### Build Takes Too Long
-The first build compiles all dependencies. Subsequent builds are much faster. You can parallelize:
-```powershell
-cmake --build . --config Release -- /m:4
+### Clean rebuild
+```bash
+rm -rf build
+mkdir build && cd build
+cmake .. -DENGINE_HEADLESS=ON   # or OFF for client
+cmake --build . --config Debug
 ```
 
-## API Reference
+## Documentation
 
-### Core Systems
-- **CoreSystems.h** - Initialize ECS with core game systems
-- **MsQuicWrapper.h** - Network communication utilities
-- **RtxgiBridge.h** - Ray tracing integration
-
-### Usage
-```cpp
-#include "core/CoreSystems.h"
-#include "net/MsQuicWrapper.h"
-
-int main() {
-    flecs::world ecs;
-    InitializeCoreSystems(ecs);
-    InitializeMsQuic();
-    
-    // Your game logic here
-    
-    return 0;
-}
-```
-
-## Supported Platforms
-
-| Platform | Architecture | Client | Server |
-|----------|--------------|--------|--------|
-| Windows  | x64          | ✅     | ✅     |
-| Linux    | x64          | ❌     | ✅     |
-| macOS    | x64/Arm64    | 🔄     | 🔄     |
-
-✅ = Fully supported | ❌ = Not supported | 🔄 = In progress
-
-## Performance Optimization
-
-### Release Build
-Always build in Release mode for optimal performance:
-```powershell
-cmake --build . --config Release
-```
-
-### Interprocedural Optimization (LTO)
-Enabled by default. For faster compilation, disable in CMakeLists.txt:
-```cmake
-set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "")
-```
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes and commit: `git commit -am 'Add feature'`
-3. Push to the branch: `git push origin feature/your-feature`
-4. Submit a pull request
+- [Engine Architecture](docs/engine-architecture.md)
+- [Renderer](docs/architecture/renderer.md)
+- [ECS](docs/architecture/ecs.md)
+- [Networking](docs/architecture/networking.md)
+- [Server / Headless](docs/architecture/server-headless.md)
+- [Build & Hot-Reload](docs/architecture/build-and-hotreload.md)
 
 ## License
 
 See `LICENSE` file for details.
 
-## Support
-
-For issues, bugs, or questions:
-1. Check existing issues on GitHub
-2. Provide a minimal reproduction case
-3. Include platform, compiler version, and build logs
-
 ## Credits
 
-- **Jolt Physics** - https://github.com/jrouwe/JoltPhysics
-- **Flecs** - https://github.com/SanderMertens/flecs
-- **bgfx** - https://github.com/bkaradzic/bgfx
-- **MsQuic** - https://github.com/microsoft/msquic
-- **RTXGI** - https://github.com/NVIDIA-RTX/RTXGI
+- [Flecs](https://github.com/SanderMertens/flecs) - ECS framework
+- [MsQuic](https://github.com/microsoft/msquic) - QUIC networking
+- [RTXGI](https://github.com/NVIDIA-RTX/RTXGI) - Ray-traced global illumination
+- [Recast/Detour](https://github.com/recastnavigation/recastnavigation) - NavMesh
+- [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
+- [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap)
+- [ImGui](https://github.com/ocornut/imgui)
+- [GLFW](https://github.com/glfw/glfw)
