@@ -47,5 +47,3 @@ gameEngine/libs/**/obj/
 __pycache__/
 *.pyc
 .env
-
-/docs/
