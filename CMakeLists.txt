@@ -248,6 +248,9 @@ if(VULKAN_FOUND)
             list(APPEND SPIRV_SHADERS ${SHADER_OUTPUT_DIR}/${SHADER_NAME}_${STAGE}.spv)
         endif()
     endforeach()
+    # Ray tracing miss shader (shaders/ray_miss.rmiss): glslc has no .rmiss stage;
+    # glslangValidator needs ray-tracing-enabled build and --target-env=vulkan1.2+.
+    # Source is built when RTXGI RT pipeline is wired; see RtxgiBridge.cpp comment.
     if(SPIRV_SHADERS)
         add_custom_target(CompileShaders ALL DEPENDS ${SPIRV_SHADERS})
     endif()

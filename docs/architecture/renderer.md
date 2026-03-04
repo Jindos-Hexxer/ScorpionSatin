@@ -70,5 +70,6 @@ Every frame, the [ECS Sync System](ecs.md) writes entity `Transform` data into a
 ## Related Documents
 
 - [ECS](ecs.md) -- Sync System that feeds transform data to the GPU.
+- [Lighting](lights.md) -- Directional light, skylight, CSM shadow pass, and RTXGI miss shader.
 - [Editor](editor.md) -- UI Pass rendering and viewport integration.
 - [Build System & Hot-Reload](build-and-hotreload.md) -- Shader compilation in the build pipeline.

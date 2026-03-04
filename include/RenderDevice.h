@@ -15,6 +15,8 @@ constexpr MeshHandle kInvalidMeshHandle = UINT32_MAX;
 /** Max materials in the global PBR SSBO and bindless texture array. */
 constexpr uint32_t kMaxPBRMaterials = 10000u;
 constexpr uint32_t kMaxBindlessTextures = 10000u;
+/** Max skylight/IBL cubemaps in bindless cubemap array (binding 4). */
+constexpr uint32_t kMaxBindlessCubemaps = 64u;
 
 /** Push constant layout for PBR pipeline: mat4 model (64 bytes) + uint material_id (4 bytes). */
 constexpr uint32_t kPBRPushConstantModelSize = 64u;
@@ -82,6 +84,8 @@ public:
     void UpdateMaterialRange(uint32_t start, uint32_t count, const PBRMaterialData* data);
     /** Register a texture in the bindless array. Returns index (0..kMaxBindlessTextures-1) or UINT32_MAX on failure. */
     uint32_t RegisterBindlessTexture(VkImageView imageView);
+    /** Register a cubemap in the bindless cubemap array (binding 4). Returns index (0..kMaxBindlessCubemaps-1) or UINT32_MAX on failure. */
+    uint32_t RegisterBindlessCubemap(VkImageView imageView);
     /** Get the single PBR descriptor set (bind once per frame for all PBR draws). */
     VkDescriptorSet GetPBRDescriptorSet() const { return pbrDescriptorSet_; }
     /** Get PBR descriptor set layout for pipeline creation. */
@@ -106,6 +110,17 @@ public:
     /** Create PBR G-Buffer pipeline (same layout as PBR, 2 color outputs). Use with GetGBufferRenderPass(). */
     VkPipeline CreatePBRGBufferPipeline(VkRenderPass gbufferRenderPass, VkShaderModule vertModule, VkShaderModule gbufferFragModule);
 
+    // --- Cascaded shadow map (sun). Call after CreatePBRResources. ---
+    /** Create shadow map (depth 2D array, 4 layers), render pass, framebuffer, and pipeline layout. Resize-safe. */
+    bool CreateShadowResources(uint32_t size);
+    /** Create shadow depth-only pipeline. Use with GetShadowRenderPass(); push constant: cascade_index (uint) + model (mat4). */
+    VkPipeline CreateShadowPipeline(VkShaderModule vertModule, VkShaderModule fragModule);
+    /** Shadow pass (depth only, 4 layers). Run before G-Buffer; bind same PBR descriptor set (binding 0 = UBO). */
+    VkRenderPass GetShadowRenderPass() const { return shadowRenderPass_; }
+    VkFramebuffer GetShadowFramebuffer() const { return shadowFramebuffer_; }
+    /** Record one shadow draw: push cascade index + model matrix, draw mesh. Pipeline and descriptor set must be bound. */
+    void CmdDrawMeshShadow(VkCommandBuffer cmd, MeshHandle meshId, const float* modelMatrix4x4, uint32_t cascadeIndex) const;
+
 private:
     void* vkbContext_ = nullptr;  // Opaque: holds vkb::Instance + vkb::Device for teardown
     VkInstance instance_ = VK_NULL_HANDLE;
@@ -128,6 +143,7 @@ private:
     VkPipelineLayout pbrPipelineLayout_ = VK_NULL_HANDLE;
     VkSampler pbrDefaultSampler_ = VK_NULL_HANDLE;
     uint32_t pbrNextTextureIndex_ = 0;
+    uint32_t pbrNextCubemapIndex_ = 0;
 
     // G-Buffer (RTXGI inputs)
     VkImage gbufferAlbedoImage_ = VK_NULL_HANDLE;
@@ -142,6 +158,17 @@ private:
     VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
     uint32_t gbufferWidth_ = 0;
     uint32_t gbufferHeight_ = 0;
+
+    // Cascaded shadow map (sun)
+    VkImage shadowMapImage_ = VK_NULL_HANDLE;
+    void* shadowMapAlloc_ = nullptr;
+    VkImageView shadowMapView_ = VK_NULL_HANDLE;
+    VkRenderPass shadowRenderPass_ = VK_NULL_HANDLE;
+    VkFramebuffer shadowFramebuffer_ = VK_NULL_HANDLE;
+    VkSampler shadowSampler_ = VK_NULL_HANDLE;
+    VkPipelineLayout shadowPipelineLayout_ = VK_NULL_HANDLE;
+    VkPipeline shadowPipeline_ = VK_NULL_HANDLE;
+    uint32_t shadowSize_ = 0;
 };
 
 } // namespace Engine
