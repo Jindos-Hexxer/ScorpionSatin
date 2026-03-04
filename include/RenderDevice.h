@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MeshPrimitives.h"
+#include "SceneUniforms.h"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
@@ -55,6 +56,15 @@ public:
     VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice_; }
     VkQueue GetGraphicsQueue() const { return graphicsQueue_; }
 
+    /** Create the scene uniform buffer (call after Init). Returns false on failure. */
+    bool CreateSceneUBO();
+    /** Update scene UBO with camera data. Call each frame before drawing. No-op if CreateSceneUBO was not called. */
+    void UpdateSceneUBO(const GlobalUBO& ubo);
+    /** Get the scene UBO buffer for descriptor set binding. VK_NULL_HANDLE if not created. */
+    VkBuffer GetSceneUBOBuffer() const { return sceneUBOBuffer_; }
+    /** Get the size of the scene UBO. */
+    static constexpr size_t GetSceneUBOSize() { return sizeof(GlobalUBO); }
+
 private:
     void* vkbContext_ = nullptr;  // Opaque: holds vkb::Instance + vkb::Device for teardown
     VkInstance instance_ = VK_NULL_HANDLE;
@@ -65,6 +75,8 @@ private:
     VkCommandPool uploadCommandPool_ = VK_NULL_HANDLE;
     void* vmaAllocator_ = nullptr; // VmaAllocator
     void* meshRegistry_ = nullptr;  // Opaque: std::vector<GpuMesh>-like storage
+    VkBuffer sceneUBOBuffer_ = VK_NULL_HANDLE;
+    void* sceneUBOAlloc_ = nullptr; // VmaAllocation
 };
 
 } // namespace Engine

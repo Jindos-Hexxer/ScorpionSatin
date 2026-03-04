@@ -139,9 +139,50 @@ bool RenderDevice::Init() {
     return true;
 }
 
+bool RenderDevice::CreateSceneUBO() {
+    if (device_ == VK_NULL_HANDLE || vmaAllocator_ == nullptr)
+        return false;
+    if (sceneUBOBuffer_ != VK_NULL_HANDLE)
+        return true;
+
+    VkBufferCreateInfo bufInfo = {};
+    bufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufInfo.size = sizeof(GlobalUBO);
+    bufInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    VkBuffer buf = VK_NULL_HANDLE;
+    VmaAllocation alloc = VK_NULL_HANDLE;
+    if (vmaCreateBuffer(static_cast<VmaAllocator>(vmaAllocator_), &bufInfo, &allocInfo,
+            &buf, &alloc, nullptr) != VK_SUCCESS)
+        return false;
+
+    sceneUBOBuffer_ = buf;
+    sceneUBOAlloc_ = alloc;
+    return true;
+}
+
+void RenderDevice::UpdateSceneUBO(const GlobalUBO& ubo) {
+    if (sceneUBOBuffer_ == VK_NULL_HANDLE || sceneUBOAlloc_ == nullptr)
+        return;
+    void* ptr = nullptr;
+    if (vmaMapMemory(static_cast<VmaAllocator>(vmaAllocator_), static_cast<VmaAllocation>(sceneUBOAlloc_), &ptr) == VK_SUCCESS) {
+        std::memcpy(ptr, &ubo, sizeof(GlobalUBO));
+        vmaUnmapMemory(static_cast<VmaAllocator>(vmaAllocator_), static_cast<VmaAllocation>(sceneUBOAlloc_));
+    }
+}
+
 void RenderDevice::Shutdown() {
     VkDevice dev = device_;
     VmaAllocator alloc = static_cast<VmaAllocator>(vmaAllocator_);
+    if (sceneUBOBuffer_ != VK_NULL_HANDLE && sceneUBOAlloc_ != nullptr) {
+        vmaDestroyBuffer(alloc, sceneUBOBuffer_, static_cast<VmaAllocation>(sceneUBOAlloc_));
+        sceneUBOBuffer_ = VK_NULL_HANDLE;
+        sceneUBOAlloc_ = nullptr;
+    }
     auto* reg = static_cast<MeshRegistry*>(meshRegistry_);
     if (reg) {
         for (GpuMesh& m : reg->meshes) {

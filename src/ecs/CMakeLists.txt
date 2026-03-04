@@ -1,0 +1,9 @@
+target_sources(Engine
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/CoreSystems.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/InputState.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/EditorCameraSystem.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/ThirdPersonCameraSystem.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/CameraMatrixSystem.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/CameraUBO.cpp
+)

@@ -23,7 +23,18 @@ set(QUIC_ENABLE_LOGGING ON CACHE INTERNAL "")
 add_subdirectory(${LIBS_DIR}/msquic EXCLUDE_FROM_ALL)
 
 set(FLECS_STATIC ON CACHE INTERNAL "")
+set(FLECS_SHARED OFF CACHE BOOL "")
 add_subdirectory(${LIBS_DIR}/flecs EXCLUDE_FROM_ALL)
+
+# glm - math for camera and ECS
+include(FetchContent)
+FetchContent_Declare(glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+set(GLM_BUILD_TESTS OFF CACHE BOOL "")
+set(GLM_BUILD_INFO_ONLY ON CACHE BOOL "")
+FetchContent_MakeAvailable(glm)
 
 # Recast/Detour - used by both Client and Headless
 set(RECASTNAVIGATION_DEMO OFF CACHE BOOL "")
@@ -76,7 +87,8 @@ endif()
 # =============================================================================
 # Engine (Shared Library) - Engine.dll / Engine.so
 # =============================================================================
-add_library(Engine SHARED)
+add_library(Engine SHARED "")
+
 set_target_properties(Engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
@@ -84,15 +96,14 @@ set_target_properties(Engine PROPERTIES
     WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
 
-target_sources(Engine
-    PRIVATE
-    ${SRC_DIR}/ecs/CoreSystems.cpp
-    ${SRC_DIR}/network/MsQuicWrapper.cpp
-    ${SRC_DIR}/collision/SpatialGrid.cpp
-    ${SRC_DIR}/navmesh/NavMeshRuntime.cpp
-    ${SRC_DIR}/mesh/Primitives.cpp
-    ${SRC_DIR}/mesh/MeshLoader.cpp
-)
+add_subdirectory(${SRC_DIR}/ecs)
+add_subdirectory(${SRC_DIR}/network)
+add_subdirectory(${SRC_DIR}/collision)
+add_subdirectory(${SRC_DIR}/navmesh)
+add_subdirectory(${SRC_DIR}/mesh)
+if(VULKAN_FOUND)
+    add_subdirectory(${SRC_DIR}/render)
+endif()
 
 target_include_directories(Engine
     PUBLIC
@@ -108,16 +119,13 @@ target_include_directories(Engine
 target_link_libraries(Engine
     PUBLIC
     msquic
-    flecs
+    flecs_static
     Recast
     Detour
+    glm::glm
 )
 
 if(VULKAN_FOUND)
-    target_sources(Engine PRIVATE
-        ${SRC_DIR}/render/RenderDevice.cpp
-        ${SRC_DIR}/render/RtxgiBridge.cpp
-    )
     target_include_directories(Engine PUBLIC
         $<BUILD_INTERFACE:${LIBS_DIR}/VulkanMemoryAllocator/include>
         $<BUILD_INTERFACE:${LIBS_DIR}/vk-bootstrap/src>
@@ -132,6 +140,7 @@ if(VULKAN_FOUND)
         target_compile_definitions(Engine PUBLIC ENGINE_RTXGI=1)
         target_include_directories(Engine PUBLIC $<BUILD_INTERFACE:${LIBS_DIR}/rtxgi/Samples/Pathtracer>)
     endif()
+    target_compile_definitions(Engine PUBLIC ENGINE_REVERSE_Z=1)
 endif()
 
 if(WIN32)
@@ -160,7 +169,7 @@ endif()
 if(VULKAN_FOUND)
     add_library(Game SHARED ${SRC_DIR}/ecs/GamePlugin.cpp)
     target_include_directories(Game PRIVATE ${INCLUDE_DIR} ${LIBS_DIR}/flecs/include)
-    target_link_libraries(Game PRIVATE Engine flecs)
+    target_link_libraries(Game PRIVATE Engine flecs_static)
     set_target_properties(Game PROPERTIES PREFIX "" OUTPUT_NAME "Game")
 endif()
 
