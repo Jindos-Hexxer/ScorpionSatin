@@ -90,6 +90,8 @@ target_sources(Engine
     ${SRC_DIR}/network/MsQuicWrapper.cpp
     ${SRC_DIR}/collision/SpatialGrid.cpp
     ${SRC_DIR}/navmesh/NavMeshRuntime.cpp
+    ${SRC_DIR}/mesh/Primitives.cpp
+    ${SRC_DIR}/mesh/MeshLoader.cpp
 )
 
 target_include_directories(Engine

@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "x64-Debug",
+            "generator": "Ninja",
+            "configurationType": "Debug",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "-DENGINE_HEADLESS=OFF -DENGINE_EDITOR=ON -DVulkan_ROOT=C:/VulkanSDK/1.4.341.1",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                { "name": "ENGINE_HEADLESS", "value": "OFF" },
+                { "name": "ENGINE_EDITOR", "value": "ON" },
+                { "name": "Vulkan_ROOT", "value": "C:/VulkanSDK/1.4.341.1" }
+            ]
+        }
+    ]
+}
