@@ -13,4 +13,9 @@ void RtxgiSetCameraFromUBO(const GlobalUBO& ubo) {
 }
 #endif
 
+void RtxgiStepFrame() {
+    // TODO: Run RTXGI SDK update/resolve using camera and G-Buffer (albedo, normal, roughness, depth).
+    // Call after G-Buffer pass; will take VkCommandBuffer and G-Buffer texture views when SDK is integrated.
+}
+
 } // namespace Engine

@@ -1,6 +1,7 @@
 // Minimal Flecs ECS core systems and camera module
 #include "CoreSystems.h"
 #include "Camera.h"
+#include "PBRMaterial.h"
 #include "Transform.h"
 #include <flecs.h>
 
@@ -14,6 +15,7 @@ void RegisterCameraModule(flecs::world& ecs) {
     ecs.component<Engine::ViewportSize>();
     ecs.component<Engine::EditorCamera>();
     ecs.component<Engine::ThirdPersonCamera>();
+    ecs.component<Engine::MeshRenderer>();
 
     ecs.ensure<Engine::ViewportSize>();
     ecs.ensure<Engine::ActiveCamera>();

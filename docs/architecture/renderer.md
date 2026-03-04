@@ -52,6 +52,7 @@ Every frame, the [ECS Sync System](ecs.md) writes entity `Transform` data into a
 
 ## RTXGI Integration
 
+- RTXGI is the default GI path. After `UpdateSceneUBO`, call `Engine::RtxgiSetCameraFromUBO(ubo)`. After the G-Buffer pass, call `Engine::RtxgiStepFrame()` so the SDK runs its update using camera and G-Buffer (albedo, normal, roughness, depth). See [Camera integration](../camera-integration.md) for the full render flow.
 - Probes are placed in a 3D grid covering the playable area.
 - Each frame, a subset of probes is updated via ray tracing (staggered updates to spread the cost).
 - The irradiance and distance data are stored in texture atlases that the Lighting pass samples.

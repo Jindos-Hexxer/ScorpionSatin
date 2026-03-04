@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MeshPrimitives.h"
+#include "PBRMaterial.h"
 #include "SceneUniforms.h"
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
@@ -10,6 +11,15 @@ namespace Engine {
 /** Opaque handle to a GPU mesh (VBO + IBO). ECS MeshRef.mesh_id uses this. */
 using MeshHandle = uint32_t;
 constexpr MeshHandle kInvalidMeshHandle = UINT32_MAX;
+
+/** Max materials in the global PBR SSBO and bindless texture array. */
+constexpr uint32_t kMaxPBRMaterials = 10000u;
+constexpr uint32_t kMaxBindlessTextures = 10000u;
+
+/** Push constant layout for PBR pipeline: mat4 model (64 bytes) + uint material_id (4 bytes). */
+constexpr uint32_t kPBRPushConstantModelSize = 64u;
+constexpr uint32_t kPBRPushConstantMaterialIdOffset = 64u;
+constexpr uint32_t kPBRPushConstantSize = 68u;
 
 /**
  * Vulkan render device: buffer creation (VMA), mesh upload, and draw recording.
@@ -65,6 +75,37 @@ public:
     /** Get the size of the scene UBO. */
     static constexpr size_t GetSceneUBOSize() { return sizeof(GlobalUBO); }
 
+    // --- PBR bindless (call after Init; CreateSceneUBO recommended first) ---
+    /** Create material SSBO, descriptor pool/layout/set, and bindless texture array. Requires Vulkan 1.3+ descriptor indexing. */
+    bool CreatePBRResources();
+    /** Upload material data into the SSBO. start + count must not exceed kMaxPBRMaterials. */
+    void UpdateMaterialRange(uint32_t start, uint32_t count, const PBRMaterialData* data);
+    /** Register a texture in the bindless array. Returns index (0..kMaxBindlessTextures-1) or UINT32_MAX on failure. */
+    uint32_t RegisterBindlessTexture(VkImageView imageView);
+    /** Get the single PBR descriptor set (bind once per frame for all PBR draws). */
+    VkDescriptorSet GetPBRDescriptorSet() const { return pbrDescriptorSet_; }
+    /** Get PBR descriptor set layout for pipeline creation. */
+    VkDescriptorSetLayout GetPBRDescriptorSetLayout() const { return pbrDescriptorSetLayout_; }
+    /** Get PBR pipeline layout (push constants: model mat4 + material_id uint). */
+    VkPipelineLayout GetPBRPipelineLayout() const { return pbrPipelineLayout_; }
+    /** Create PBR graphics pipeline. renderPass and vertex layout must match Engine::Vertex (pos, normal, uv, tangent). */
+    VkPipeline CreatePBRPipeline(VkRenderPass renderPass, VkShaderModule vertModule, VkShaderModule fragModule);
+    /** Record PBR draw: bind descriptor set (caller), push model + material_id, draw mesh. Pipeline and descriptor set must be bound by caller. */
+    void CmdDrawMeshPBR(VkCommandBuffer cmd, MeshHandle meshId, uint32_t materialId, const float* modelMatrix4x4) const;
+
+    // --- G-Buffer (for RTXGI: albedo, normal+roughness, depth). Call after CreatePBRResources. ---
+    /** Create G-Buffer images (albedo, normal+roughness, depth) and render pass. Resize-safe: call with new width/height to recreate. */
+    bool CreateGBufferResources(uint32_t width, uint32_t height);
+    /** Get the G-Buffer render pass (2 color attachments + depth). VK_NULL_HANDLE if not created. */
+    VkRenderPass GetGBufferRenderPass() const { return gbufferRenderPass_; }
+    /** G-Buffer color attachment views for albedo (RGB) and normal+roughness (RGB+A). */
+    VkImageView GetGBufferAlbedoView() const { return gbufferAlbedoView_; }
+    VkImageView GetGBufferNormalRoughnessView() const { return gbufferNormalRoughnessView_; }
+    /** G-Buffer depth attachment view. */
+    VkImageView GetGBufferDepthView() const { return gbufferDepthView_; }
+    /** Create PBR G-Buffer pipeline (same layout as PBR, 2 color outputs). Use with GetGBufferRenderPass(). */
+    VkPipeline CreatePBRGBufferPipeline(VkRenderPass gbufferRenderPass, VkShaderModule vertModule, VkShaderModule gbufferFragModule);
+
 private:
     void* vkbContext_ = nullptr;  // Opaque: holds vkb::Instance + vkb::Device for teardown
     VkInstance instance_ = VK_NULL_HANDLE;
@@ -77,6 +118,30 @@ private:
     void* meshRegistry_ = nullptr;  // Opaque: std::vector<GpuMesh>-like storage
     VkBuffer sceneUBOBuffer_ = VK_NULL_HANDLE;
     void* sceneUBOAlloc_ = nullptr; // VmaAllocation
+
+    // PBR bindless
+    VkBuffer pbrMaterialSSBO_ = VK_NULL_HANDLE;
+    void* pbrMaterialSSBOAlloc_ = nullptr;
+    VkDescriptorPool pbrDescriptorPool_ = VK_NULL_HANDLE;
+    VkDescriptorSetLayout pbrDescriptorSetLayout_ = VK_NULL_HANDLE;
+    VkDescriptorSet pbrDescriptorSet_ = VK_NULL_HANDLE;
+    VkPipelineLayout pbrPipelineLayout_ = VK_NULL_HANDLE;
+    VkSampler pbrDefaultSampler_ = VK_NULL_HANDLE;
+    uint32_t pbrNextTextureIndex_ = 0;
+
+    // G-Buffer (RTXGI inputs)
+    VkImage gbufferAlbedoImage_ = VK_NULL_HANDLE;
+    VkImage gbufferNormalRoughnessImage_ = VK_NULL_HANDLE;
+    VkImage gbufferDepthImage_ = VK_NULL_HANDLE;
+    void* gbufferAlbedoAlloc_ = nullptr;
+    void* gbufferNormalRoughnessAlloc_ = nullptr;
+    void* gbufferDepthAlloc_ = nullptr;
+    VkImageView gbufferAlbedoView_ = VK_NULL_HANDLE;
+    VkImageView gbufferNormalRoughnessView_ = VK_NULL_HANDLE;
+    VkImageView gbufferDepthView_ = VK_NULL_HANDLE;
+    VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
+    uint32_t gbufferWidth_ = 0;
+    uint32_t gbufferHeight_ = 0;
 };
 
 } // namespace Engine

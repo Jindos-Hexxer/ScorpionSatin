@@ -14,4 +14,7 @@ void InitializeRtxgi();
 void RtxgiSetCameraFromUBO(const GlobalUBO& ubo);
 #endif
 
+/** Per-frame RTXGI step. Call after the G-Buffer pass each frame as part of the default render path. Stub for now; will take command buffer and G-Buffer views when SDK is integrated. */
+void RtxgiStepFrame();
+
 } // namespace Engine

@@ -36,6 +36,32 @@ set(GLM_BUILD_TESTS OFF CACHE BOOL "")
 set(GLM_BUILD_INFO_ONLY ON CACHE BOOL "")
 FetchContent_MakeAvailable(glm)
 
+# cgltf - glTF 2.0 loader (header-only with CGLTF_IMPLEMENTATION in MeshLoader.cpp)
+FetchContent_Declare(cgltf
+    GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+    GIT_TAG v1.14
+)
+FetchContent_Populate(cgltf)
+
+if(NOT TARGET cgltf)
+    # Generate a tiny .c file in the build directory automatically!
+    set(CGLTF_IMPL_FILE "${CMAKE_CURRENT_BINARY_DIR}/cgltf_impl.c")
+    file(WRITE ${CGLTF_IMPL_FILE} "#define CGLTF_IMPLEMENTATION\n#include \"cgltf.h\"\n")
+
+    # Compile that generated file into a static library
+    add_library(cgltf STATIC ${CGLTF_IMPL_FILE})
+    
+    # Expose the header directory to whoever links this target
+    target_include_directories(cgltf PUBLIC ${cgltf_SOURCE_DIR})
+    
+    # Suppress third-party warnings so they don't clutter your build output
+    if(MSVC)
+        target_compile_options(cgltf PRIVATE /w)
+    else()
+        target_compile_options(cgltf PRIVATE -w)
+    endif()
+endif()
+
 # Recast/Detour - used by both Client and Headless
 set(RECASTNAVIGATION_DEMO OFF CACHE BOOL "")
 set(RECASTNAVIGATION_TESTS OFF CACHE BOOL "")
@@ -101,6 +127,7 @@ add_subdirectory(${SRC_DIR}/network)
 add_subdirectory(${SRC_DIR}/collision)
 add_subdirectory(${SRC_DIR}/navmesh)
 add_subdirectory(${SRC_DIR}/mesh)
+target_include_directories(Engine PRIVATE ${cgltf_SOURCE_DIR})
 if(VULKAN_FOUND)
     add_subdirectory(${SRC_DIR}/render)
 endif()

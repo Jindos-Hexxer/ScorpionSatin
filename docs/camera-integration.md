@@ -32,6 +32,13 @@ The camera module (ECS components + systems + GlobalUBO) is implemented and regi
 - Ensure `RenderDevice::CreateSceneUBO()` was called once after `RenderDevice::Init()`.
 - Use `RenderDevice::GetSceneUBOBuffer()` and `GetSceneUBOSize()` when building descriptor sets for the scene UBO.
 
+### RTXGI (default render path)
+
+RTXGI is the engine's default global illumination path. Each frame, once the PBR/G-Buffer pass is active:
+
+1. After `UpdateSceneUBO(ubo)`, call `Engine::RtxgiSetCameraFromUBO(ubo)` so RTXGI uses the same view (when `ENGINE_RTXGI` is defined).
+2. After the **G-Buffer pass** (geometry written to albedo, normal+roughness, and depth targets), call `Engine::RtxgiStepFrame()`. RTXGI runs its update using camera and G-Buffer data (base color, normal, roughness) for GI. The lighting pass then combines direct lighting with RTXGI indirect lighting.
+
 ## 6. Reverse-Z
 
 - The camera projection is built for Reverse-Z by default (far = 0, near = 1). Use a depth format and compare op suitable for reverse-Z (e.g. `VK_COMPARE_OP_GREATER_OR_EQUAL`).
