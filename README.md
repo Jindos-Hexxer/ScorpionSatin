@@ -122,16 +122,6 @@ ScorpionSatin/
 └── docs/           # Architecture documentation
 ```
 
-## Cursor IDE
-
-The project includes `.vscode/` configuration:
-
-- **CMake Tools** - Configure on open, build directory
-- **Tasks** - `CMake Configure (Client)`, `CMake Configure (Headless)`, `CMake Build`
-- **Launch** - Debug `Editor.exe` or `DedicatedServer.exe`
-
-Use **Run and Debug** (F5) or the build task to compile.
-
 ## Troubleshooting
 
 ### Vulkan not found
